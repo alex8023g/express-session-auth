@@ -45,7 +45,7 @@ app.get('/login', (req, res) => {
   }
 });
 
-app.post('/login', (req, res) => {
+app.post('/api/login', (req, res) => {
   if (req.body.username == 'q' && req.body.password == 'q') {
     // session = req.session;
     req.session.userName = req.body.username;
@@ -59,6 +59,7 @@ app.post('/login', (req, res) => {
 
 app.get('/logout', (req, res) => {
   req.session.destroy();
+  res.clearCookie('sessionIdCookie');
   res.redirect('/');
 });
 
