@@ -1,34 +1,31 @@
 const express = require('express');
 const path = require('path');
 const cookieParser = require('cookie-parser');
-const sessions = require('express-session');
+const session = require('express-session');
 require('dotenv').config();
-const MongoDBStore = require('connect-mongodb-session')(sessions);
+const MongoDBStore = require('connect-mongodb-session')(session);
 const { MongoClient } = require('mongodb');
-
 var passport = require('passport');
 var LocalStrategy = require('passport-local');
 var crypto = require('crypto');
 
 const app = express();
 
-app.use(async (req, res, next) => {
+(async (req, res, next) => {
   try {
     const client = await MongoClient.connect(process.env.MONGO_URI);
-    req.db = client.db('session-test'); // = await MongoClient.connect(process.env.MONGO_URI).db('session-test') - не работает
-    next();
+    db = client.db('session-test'); // = await MongoClient.connect(process.env.MONGO_URI).db('session-test') - не работает
   } catch (err) {
     console.error(err);
-    next();
   }
-});
+})();
 
 app.use(
-  sessions({
+  session({
     secret: 'thisismysecrctekeyfhrgfgrfrty84fwir767',
-    cookie: { maxAge: 1000 * 60 * 2 }, // милисекунд
-    saveUninitialized: false,
+    // cookie: { maxAge: 1000 * 60 * 2 }, // милисекунд
     resave: false,
+    saveUninitialized: false,
     name: 'sessionIdCookie',
     store: new MongoDBStore({
       uri: process.env.MONGO_URI + 'session-test',
@@ -36,50 +33,53 @@ app.use(
     }),
   })
 );
+app.use(passport.authenticate('session'));
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+passport.use(
+  new LocalStrategy(async function verify(username, password, cb) {
+    const user = await findUserByUsername(db, username);
+    console.log('user:', user, user?._id?.toString());
+    if (!user) {
+      return cb(null, false);
+    }
+
+    if (user.password !== toHash(password)) {
+      console.log('пароль неверный', toHash(password));
+      return cb(null, false);
+    }
+    return cb(null, user);
+  })
+);
+
+function toHash(x) {
+  let hash1 = crypto.createHash('sha256');
+  hash1.update(x);
+  let hash2 = hash1.digest('hex');
+  return hash2;
+}
 
 async function findUserByUsername(db, username) {
   return db.collection('users').findOne({ username });
 }
 
-passport.use(
-  new LocalStrategy(async function verify(username, password, cb) {
-    const userData = await findUserByUsername(req.db, username);
-    return userData;
+passport.serializeUser(function (user, cb) {
+  process.nextTick(function () {
+    cb(null, { id: user['_id'].toString(), username: user.username });
+  });
+});
 
-    // db.get('SELECT * FROM users WHERE username = ?', [username], function (err, row) {
-    //   if (err) {
-    //     return cb(err);
-    //   }
-    //   if (!row) {
-    //     return cb(null, false, { message: 'Incorrect username or password.' });
-    //   }
-
-    //   crypto.pbkdf2(
-    //     password,
-    //     row.salt,
-    //     310000,
-    //     32,
-    //     'sha256',
-    //     function (err, hashedPassword) {
-    //       if (err) {
-    //         return cb(err);
-    //       }
-    //       if (!crypto.timingSafeEqual(row.hashed_password, hashedPassword)) {
-    //         return cb(null, false, { message: 'Incorrect username or password.' });
-    //       }
-    //       return cb(null, row);
-    //     }
-    //   );
-    // });
-  })
-);
+passport.deserializeUser(function (user, cb) {
+  process.nextTick(function () {
+    return cb(null, user);
+  });
+});
 
 app.get('/', (req, res) => {
   console.log(req.session, req.sessionID);
-  if (req.session.username) {
+  if (req.session.passport?.user) {
     res.sendFile(path.resolve('./pages/index.html'));
   } else {
     res.redirect('/login');
@@ -94,21 +94,33 @@ app.get('/login', (req, res) => {
   }
 });
 
-app.post('/api/login', async (req, res) => {
-  const { username, password } = await findUserByUsername(req.db, req.body.username);
-
-  console.log({ username, password });
-  if (req.body.username === username && req.body.password === password) {
-    req.session.username = req.body.username;
-    res.redirect('/');
-  } else {
-    res.send('Invalid username or password');
-  }
+app.get('/signup', (req, res) => {
+  res.sendFile(path.resolve('./pages/signup.html'));
 });
 
-app.get('/logout', (req, res) => {
-  req.session.destroy();
-  res.clearCookie('sessionIdCookie');
+app.post(
+  '/api/login',
+  passport.authenticate('local', {
+    successRedirect: '/',
+    failureRedirect: '/login',
+  })
+);
+
+app.get('/logout', (req, res, next) => {
+  req.logout(function (err) {
+    if (err) {
+      return next(err);
+    }
+    res.clearCookie('sessionIdCookie');
+    res.redirect('/');
+  });
+});
+
+app.post('/signup', async function (req, res, next) {
+  await db.collection('users').insertOne({
+    username: req.body.username,
+    password: toHash(req.body.password),
+  });
   res.redirect('/');
 });
 
