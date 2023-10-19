@@ -6,20 +6,18 @@ require('dotenv').config();
 const MongoDBStore = require('connect-mongodb-session')(sessions);
 
 const app = express();
-const mongoStore = new MongoDBStore({
-  uri: process.env.MONGO_URI + 'session-test',
-  collection: 'mySessions',
-});
 
-// console.log(process.env.MONGO_URI);
 app.use(
   sessions({
     secret: 'thisismysecrctekeyfhrgfgrfrty84fwir767',
     cookie: { maxAge: 1000 * 60 * 2 }, // милисекунд
     saveUninitialized: false,
     resave: false,
-    store: mongoStore,
     name: 'sessionIdCookie',
+    store: new MongoDBStore({
+      uri: process.env.MONGO_URI + 'session-test',
+      collection: 'mySessions',
+    }),
   })
 );
 app.use(cookieParser());
