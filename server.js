@@ -5,9 +5,12 @@ const sessions = require('express-session');
 require('dotenv').config();
 const MongoDBStore = require('connect-mongodb-session')(sessions);
 const { MongoClient } = require('mongodb');
-const app = express();
 
-// const mongoClientPromise = MongoClient.connect(process.env.MONGO_URI);
+var passport = require('passport');
+var LocalStrategy = require('passport-local');
+var crypto = require('crypto');
+
+const app = express();
 
 app.use(async (req, res, next) => {
   try {
@@ -41,6 +44,39 @@ async function findUserByUsername(db, username) {
   return db.collection('users').findOne({ username });
 }
 
+passport.use(
+  new LocalStrategy(async function verify(username, password, cb) {
+    const userData = await findUserByUsername(req.db, username);
+    return userData;
+
+    // db.get('SELECT * FROM users WHERE username = ?', [username], function (err, row) {
+    //   if (err) {
+    //     return cb(err);
+    //   }
+    //   if (!row) {
+    //     return cb(null, false, { message: 'Incorrect username or password.' });
+    //   }
+
+    //   crypto.pbkdf2(
+    //     password,
+    //     row.salt,
+    //     310000,
+    //     32,
+    //     'sha256',
+    //     function (err, hashedPassword) {
+    //       if (err) {
+    //         return cb(err);
+    //       }
+    //       if (!crypto.timingSafeEqual(row.hashed_password, hashedPassword)) {
+    //         return cb(null, false, { message: 'Incorrect username or password.' });
+    //       }
+    //       return cb(null, row);
+    //     }
+    //   );
+    // });
+  })
+);
+
 app.get('/', (req, res) => {
   console.log(req.session, req.sessionID);
   if (req.session.username) {
@@ -51,7 +87,7 @@ app.get('/', (req, res) => {
 });
 
 app.get('/login', (req, res) => {
-  if (req.session.userName) {
+  if (req.session.username) {
     res.redirect('/');
   } else {
     res.sendFile(path.resolve('./pages/login.html'));
