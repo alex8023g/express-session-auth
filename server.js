@@ -51,7 +51,7 @@ app.get('/', (req, res) => {
 });
 
 app.get('/login', (req, res) => {
-  if (req.session.userName) {
+  if (req.session.username) {
     res.redirect('/');
   } else {
     res.sendFile(path.resolve('./pages/login.html'));
