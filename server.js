@@ -69,33 +69,32 @@ passport.use(
       try {
         const federatedUser = await db
           .collection('federatedCredentials')
-          .findOne({}, { profile: { id: '111043669863531925378' } });
+          .findOne({}, { profile: { id: profile.id } });
         console.log('federatedUser!!:', federatedUser);
-        let user;
         if (!federatedUser) {
           let resAddUser = await db
             .collection('federatedCredentials')
             .insertOne({ profile });
           console.log('resAddUser_id:', resAddUser['insertedId'].toString());
-          user = {
+          const user = {
             _id: resAddUser['insertedId'],
             username: profile.displayName,
             provider: profile.provider,
           };
           await db.collection('users').insertOne(user);
+          return cb(null, user);
         } else {
-          user = await db
-            .collection('users')
-            .findOne({}, { _id: new ObjectId('653285e014856c867e7828fb') });
+          const user = await db.collection('users').findOne({ _id: federatedUser._id });
+          // .findOne({}, { _id: new ObjectId('653285e014856c867e7828fb') });
           // .findOne({}, { _id: new ObjectId(federatedUser._id.toString()) });
           console.log(
             'federatedUser._id:',
             federatedUser._id,
             new ObjectId('653285e014856c867e7828fb')
           );
-          console.log('user:', user);
+          console.log('else user!!:', user);
+          return cb(null, user);
         }
-        return cb(null, user);
       } catch (err) {
         console.error(err);
         return err;
