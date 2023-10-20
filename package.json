@@ -17,9 +17,12 @@
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "express-session": "^1.17.3",
+    "install": "^0.13.0",
     "mongodb": "^6.1.0",
     "nanoid": "^3.3.6",
+    "npm": "^10.2.1",
     "passport": "^0.6.0",
+    "passport-google-oauth20": "^2.0.0",
     "passport-google-oidc": "^0.1.0",
     "passport-local": "^1.0.0"
   }

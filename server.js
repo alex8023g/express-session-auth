@@ -5,14 +5,14 @@ const session = require('express-session');
 require('dotenv').config();
 const MongoDBStore = require('connect-mongodb-session')(session);
 const { MongoClient, ObjectId } = require('mongodb');
-var passport = require('passport');
-var LocalStrategy = require('passport-local');
-var crypto = require('crypto');
-var GoogleStrategy = require('passport-google-oidc');
+const passport = require('passport');
+const LocalStrategy = require('passport-local');
+const crypto = require('crypto');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 const app = express();
 
-(async (req, res, next) => {
+(async () => {
   try {
     const client = await MongoClient.connect(process.env.MONGO_URI);
     db = client.db('session-test'); // = await MongoClient.connect(process.env.MONGO_URI).db('session-test') - не работает
@@ -63,29 +63,38 @@ passport.use(
       callbackURL: '/oauth2/redirect/google',
       scope: ['profile'],
     },
-    async function verify(issuer, profile, cb) {
+    async (accessToken, refreshToken, profile, cb) => {
+      console.log('profile!!', profile);
+      const id = profile.id;
       try {
         const federatedUser = await db
           .collection('federatedCredentials')
-          .findOne({ issuer, profile });
+          .findOne({}, { profile: { id: '111043669863531925378' } });
+        console.log('federatedUser!!:', federatedUser);
         let user;
         if (!federatedUser) {
           let resAddUser = await db
             .collection('federatedCredentials')
-            .insertOne({ issuer, profile });
-          console.log('resAddUser!!', resAddUser);
+            .insertOne({ profile });
           console.log('resAddUser_id:', resAddUser['insertedId'].toString());
           user = {
             _id: resAddUser['insertedId'],
             username: profile.displayName,
-            issuer,
+            provider: profile.provider,
           };
           await db.collection('users').insertOne(user);
         } else {
-          console.log('federatedUser!!:', federatedUser);
-          user = await db.collection('users').findOne({ issuer, _id: federatedUser._id });
+          user = await db
+            .collection('users')
+            .findOne({}, { _id: new ObjectId('653285e014856c867e7828fb') });
+          // .findOne({}, { _id: new ObjectId(federatedUser._id.toString()) });
+          console.log(
+            'federatedUser._id:',
+            federatedUser._id,
+            new ObjectId('653285e014856c867e7828fb')
+          );
+          console.log('user:', user);
         }
-        console.log('issuer:', issuer, 'profile:', profile, 'user:', user);
         return cb(null, user);
       } catch (err) {
         console.error(err);
