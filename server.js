@@ -4,10 +4,11 @@ const cookieParser = require('cookie-parser');
 const session = require('express-session');
 require('dotenv').config();
 const MongoDBStore = require('connect-mongodb-session')(session);
-const { MongoClient } = require('mongodb');
+const { MongoClient, ObjectId } = require('mongodb');
 var passport = require('passport');
 var LocalStrategy = require('passport-local');
 var crypto = require('crypto');
+var GoogleStrategy = require('passport-google-oidc');
 
 const app = express();
 
@@ -52,6 +53,46 @@ passport.use(
     }
     return cb(null, user);
   })
+);
+
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: process.env['GOOGLE_CLIENT_ID'],
+      clientSecret: process.env['GOOGLE_CLIENT_SECRET'],
+      callbackURL: '/oauth2/redirect/google',
+      scope: ['profile'],
+    },
+    async function verify(issuer, profile, cb) {
+      try {
+        const federatedUser = await db
+          .collection('federatedCredentials')
+          .findOne({ issuer, profile });
+        let user;
+        if (!federatedUser) {
+          let resAddUser = await db
+            .collection('federatedCredentials')
+            .insertOne({ issuer, profile });
+          console.log('resAddUser!!', resAddUser);
+          console.log('resAddUser_id:', resAddUser['insertedId'].toString());
+          user = {
+            _id: resAddUser['insertedId'],
+            username: profile.displayName,
+            issuer,
+          };
+          await db.collection('users').insertOne(user);
+        } else {
+          console.log('federatedUser!!:', federatedUser);
+          user = await db.collection('users').findOne({ issuer, _id: federatedUser._id });
+        }
+        console.log('issuer:', issuer, 'profile:', profile, 'user:', user);
+        return cb(null, user);
+      } catch (err) {
+        console.error(err);
+        return err;
+      }
+    }
+  )
 );
 
 function toHash(x) {
@@ -101,6 +142,16 @@ app.get('/signup', (req, res) => {
 app.post(
   '/api/login',
   passport.authenticate('local', {
+    successRedirect: '/',
+    failureRedirect: '/login',
+  })
+);
+
+app.get('/login/federated/google', passport.authenticate('google'));
+
+app.get(
+  '/oauth2/redirect/google',
+  passport.authenticate('google', {
     successRedirect: '/',
     failureRedirect: '/login',
   })
