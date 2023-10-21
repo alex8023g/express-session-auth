@@ -69,7 +69,7 @@ passport.use(
       try {
         const federatedUser = await db
           .collection('federatedCredentials')
-          .findOne({}, { profile: { id: profile.id } });
+          .findOne({ profile: { id: profile.id } });
         console.log('federatedUser!!:', federatedUser);
         if (!federatedUser) {
           let resAddUser = await db
