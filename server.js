@@ -9,6 +9,8 @@ const passport = require('passport');
 const LocalStrategy = require('passport-local');
 const crypto = require('crypto');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const pagesRouter = require('./routes/pages');
+const authRouter = require('./routes/auth');
 
 const app = express();
 
@@ -21,6 +23,7 @@ const app = express();
   }
 })();
 
+app.use(pagesRouter);
 app.use(
   session({
     secret: 'thisismysecrctekeyfhrgfgrfrty84fwir767',
@@ -126,26 +129,26 @@ passport.deserializeUser(function (user, cb) {
   });
 });
 
-app.get('/', (req, res) => {
-  console.log(req.session, req.sessionID);
-  if (req.session.passport?.user) {
-    res.sendFile(path.resolve('./pages/index.html'));
-  } else {
-    res.redirect('/login');
-  }
-});
+// app.get('/', (req, res) => {
+//   console.log(req.session, req.sessionID);
+//   if (req.session.passport?.user) {
+//     res.sendFile(path.resolve('./pages/index.html'));
+//   } else {
+//     res.redirect('/login');
+//   }
+// });
 
-app.get('/login', (req, res) => {
-  if (req.session.username) {
-    res.redirect('/');
-  } else {
-    res.sendFile(path.resolve('./pages/login.html'));
-  }
-});
+// app.get('/login', (req, res) => {
+//   if (req.session.username) {
+//     res.redirect('/');
+//   } else {
+//     res.sendFile(path.resolve('./pages/login.html'));
+//   }
+// });
 
-app.get('/signup', (req, res) => {
-  res.sendFile(path.resolve('./pages/signup.html'));
-});
+// app.get('/signup', (req, res) => {
+//   res.sendFile(path.resolve('./pages/signup.html'));
+// });
 
 app.post(
   '/api/login',
