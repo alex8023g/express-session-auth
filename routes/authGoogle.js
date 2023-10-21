@@ -20,7 +20,7 @@ passport.use(
   )
 );
 
-router.get('/login/federated/google', passport.authenticate('google'));
+router.get('/auth/google', passport.authenticate('google'));
 
 router.get(
   '/oauth2/redirect/google',

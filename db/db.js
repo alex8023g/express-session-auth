@@ -8,16 +8,18 @@ const { MongoClient, ObjectId } = require('mongodb');
 //   const db = clientDb.db('session-test');
 //   return db;
 // };
+const clientDb = new MongoClient(process.env.MONGO_URI);
 
-async function getDb(nameDb) {
+async function getDb() {
   const clientDb = new MongoClient(process.env.MONGO_URI);
-  await clientDb.connect();
-  return clientDb.db(nameDb);
+  return clientDb.connect();
+  // return clientDb;
 }
 
 exports.findUserByUsername = async (username) => {
   try {
-    const db = await getDb('session-test');
+    const clientDb = await getDb();
+    const db = clientDb.db('session-test');
     return db.collection('users').findOne({ username });
   } catch (err) {
     console.error(err);
@@ -28,7 +30,8 @@ exports.findUserByUsername = async (username) => {
 
 exports.addLocalUser = async ({ username, password }) => {
   try {
-    const db = await getDb('session-test');
+    const clientDb = await getDb();
+    const db = clientDb.db('session-test');
     db.collection('users').insertOne({
       username,
       password,
@@ -43,7 +46,8 @@ exports.addLocalUser = async ({ username, password }) => {
 
 exports.findOrAddFederatedUser = async (profile) => {
   try {
-    const db = await getDb('session-test');
+    const clientDb = await getDb();
+    const db = clientDb.db('session-test');
     const federatedUser = await db.collection('federatedCredentials').findOne({
       'profile.id': profile.id,
     });
