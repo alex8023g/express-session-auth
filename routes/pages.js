@@ -14,6 +14,7 @@ router.use(
     store: new MongoDBStore({
       uri: process.env.MONGO_URI + 'session-test',
       collection: 'mySessions',
+      expires: 1000 * 60 * 60 * 10,
     }),
   })
 );
